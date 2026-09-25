@@ -1,0 +1,416 @@
+package com.example.shaketosave;
+
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.location.Location;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.preference.PreferenceManager;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.example.shaketosave.api.ApiClient;
+import com.example.shaketosave.api.SafeRouteApi;
+import com.example.shaketosave.api.models.SafeRouteModels;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.material.textfield.TextInputEditText;
+
+import org.osmdroid.config.Configuration;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.overlay.Polyline;
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
+
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+public class SafeRouteActivity extends AppCompatActivity {
+
+    private static final int LOCATION_PERMISSION_REQUEST = 300;
+
+    // UI
+    private MapView mapView;
+    private TextInputEditText etSourceAddress, etDestAddress;
+    private Button btnFindRoute, btnMyLocation;
+    private ProgressBar progressBar;
+    private View layoutResult;
+    private TextView tvSafetyScore, tvSafetyLabel, tvDistance, tvDuration;
+    private LinearLayout layoutTips;
+    private View safetyIndicatorBar;
+    private ImageView ivSafetyIcon;
+
+    // Map overlays
+    private MyLocationNewOverlay locationOverlay;
+    private Polyline routePolyline;
+    private List<Marker> segmentMarkers = new ArrayList<>();
+
+    // State
+    private FusedLocationProviderClient fusedLocationClient;
+    private double userLat = 0, userLng = 0;
+    private boolean hasUserLocation = false;
+    private SafeRouteApi safeRouteApi;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // Must be called before setContentView
+        Configuration.getInstance().load(this,
+                PreferenceManager.getDefaultSharedPreferences(this));
+        
+        // Set osmdroid user agent to avoid 403 blocked errors
+        Configuration.getInstance().setUserAgentValue("SurakshaSetuApp/1.0 (contact@example.com)");
+        
+        setContentView(R.layout.activity_safe_route);
+
+        safeRouteApi = ApiClient.getClient().create(SafeRouteApi.class);
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        initViews();
+        initMap();
+        requestLocationPermission();
+    }
+
+    private void initViews() {
+        mapView = findViewById(R.id.mapView);
+        etSourceAddress = findViewById(R.id.etSourceAddress);
+        etDestAddress = findViewById(R.id.etDestAddress);
+        btnFindRoute = findViewById(R.id.btnFindRoute);
+        btnMyLocation = findViewById(R.id.btnMyLocation);
+        progressBar = findViewById(R.id.progressBar);
+        layoutResult = findViewById(R.id.layoutResult);
+        tvSafetyScore = findViewById(R.id.tvSafetyScore);
+        tvSafetyLabel = findViewById(R.id.tvSafetyLabel);
+        tvDistance = findViewById(R.id.tvDistance);
+        tvDuration = findViewById(R.id.tvDuration);
+        layoutTips = findViewById(R.id.layoutTips);
+        safetyIndicatorBar = findViewById(R.id.safetyIndicatorBar);
+        ivSafetyIcon = findViewById(R.id.ivSafetyIcon);
+
+        btnFindRoute.setOnClickListener(v -> findSafeRoute());
+        btnMyLocation.setOnClickListener(v -> centerOnMyLocation());
+    }
+
+    private void initMap() {
+        mapView.setTileSource(TileSourceFactory.WIKIMEDIA);
+        mapView.setMultiTouchControls(true);
+        mapView.getController().setZoom(15.0);
+
+        locationOverlay = new MyLocationNewOverlay(
+                new GpsMyLocationProvider(this), mapView);
+        locationOverlay.enableMyLocation();
+        mapView.getOverlays().add(locationOverlay);
+    }
+
+    private void requestLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    LOCATION_PERMISSION_REQUEST);
+        } else {
+            fetchUserLocation();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_PERMISSION_REQUEST
+                && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            fetchUserLocation();
+        }
+    }
+
+    private void fetchUserLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) return;
+
+        fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
+            if (location != null) {
+                userLat = location.getLatitude();
+                userLng = location.getLongitude();
+                hasUserLocation = true;
+                mapView.getController().animateTo(new GeoPoint(userLat, userLng));
+            }
+        });
+    }
+
+    private void centerOnMyLocation() {
+        if (hasUserLocation) {
+            mapView.getController().animateTo(new GeoPoint(userLat, userLng));
+        } else {
+            fetchUserLocation();
+            Toast.makeText(this, "Fetching your location…", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void findSafeRoute() {
+        String srcAddress = etSourceAddress.getText() != null ? etSourceAddress.getText().toString().trim() : "";
+        String destAddress = etDestAddress.getText() != null ? etDestAddress.getText().toString().trim() : "";
+
+        if (destAddress.isEmpty()) {
+            Toast.makeText(this, "Please enter a destination address", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (srcAddress.isEmpty() && !hasUserLocation) {
+            Toast.makeText(this, "Waiting for your location…", Toast.LENGTH_SHORT).show();
+            fetchUserLocation();
+            return;
+        }
+
+        setLoading(true);
+        layoutResult.setVisibility(View.GONE);
+
+        new Thread(() -> {
+            try {
+                android.location.Geocoder geocoder = new android.location.Geocoder(SafeRouteActivity.this, java.util.Locale.getDefault());
+                
+                // Resolve destination
+                java.util.List<android.location.Address> destAddrs = geocoder.getFromLocationName(destAddress, 1);
+                if (destAddrs == null || destAddrs.isEmpty()) {
+                    runOnUiThread(() -> {
+                        setLoading(false);
+                        Toast.makeText(SafeRouteActivity.this, "Could not find coordinates for destination.", Toast.LENGTH_SHORT).show();
+                    });
+                    return;
+                }
+                double destLat = destAddrs.get(0).getLatitude();
+                double destLng = destAddrs.get(0).getLongitude();
+
+                // Resolve source
+                final double finalSrcLat;
+                final double finalSrcLng;
+                if (!srcAddress.isEmpty()) {
+                    java.util.List<android.location.Address> srcAddrs = geocoder.getFromLocationName(srcAddress, 1);
+                    if (srcAddrs == null || srcAddrs.isEmpty()) {
+                        runOnUiThread(() -> {
+                            setLoading(false);
+                            Toast.makeText(SafeRouteActivity.this, "Could not find coordinates for source.", Toast.LENGTH_SHORT).show();
+                        });
+                        return;
+                    }
+                    finalSrcLat = srcAddrs.get(0).getLatitude();
+                    finalSrcLng = srcAddrs.get(0).getLongitude();
+                } else {
+                    finalSrcLat = userLat;
+                    finalSrcLng = userLng;
+                }
+
+                runOnUiThread(() -> scoreRouteWithBackend(finalSrcLat, finalSrcLng, destLat, destLng));
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(() -> {
+                    setLoading(false);
+                    Toast.makeText(SafeRouteActivity.this, "Geocoding error: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        }).start();
+    }
+
+    private void scoreRouteWithBackend(double srcLat, double srcLng, double destLat, double destLng) {
+        // Determine if it's night (between 7 PM and 6 AM)
+        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        boolean isNight = hour >= 19 || hour < 6;
+
+        SafeRouteModels.RouteRequest request = new SafeRouteModels.RouteRequest(
+                new SafeRouteModels.LatLng(srcLat, srcLng),
+                new SafeRouteModels.LatLng(destLat, destLng),
+                isNight
+        );
+
+        safeRouteApi.scoreRoute(request).enqueue(new Callback<SafeRouteModels.RouteResponse>() {
+            @Override
+            public void onResponse(@NonNull Call<SafeRouteModels.RouteResponse> call,
+                                   @NonNull Response<SafeRouteModels.RouteResponse> response) {
+                setLoading(false);
+                if (response.isSuccessful() && response.body() != null) {
+                    renderRoute(response.body(), destLat, destLng);
+                } else {
+                    String err = "Could not calculate safe route";
+                    try {
+                        if (response.errorBody() != null) err = response.errorBody().string();
+                    } catch (Exception ignored) {}
+                    Toast.makeText(SafeRouteActivity.this, err, Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<SafeRouteModels.RouteResponse> call,
+                                  @NonNull Throwable t) {
+                setLoading(false);
+                Toast.makeText(SafeRouteActivity.this,
+                        "Network error: " + t.getLocalizedMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void renderRoute(SafeRouteModels.RouteResponse route,
+                              double destLat, double destLng) {
+        // Clear previous overlays (except location overlay)
+        clearRouteOverlays();
+
+        // ---- Draw polyline ----
+        List<GeoPoint> geoPoints = new ArrayList<>();
+        if (route.polyline != null) {
+            for (List<Double> pt : route.polyline) {
+                if (pt.size() >= 2) geoPoints.add(new GeoPoint(pt.get(0), pt.get(1)));
+            }
+        }
+
+        if (!geoPoints.isEmpty()) {
+            routePolyline = new Polyline();
+            routePolyline.setPoints(geoPoints);
+            routePolyline.setColor(getSafetyColor(route.overall_safety_score));
+            routePolyline.setWidth(8f);
+            mapView.getOverlays().add(routePolyline);
+        }
+
+        // ---- Segment markers (coloured dots) ----
+        if (route.segments != null) {
+            for (SafeRouteModels.SegmentSafety seg : route.segments) {
+                Marker m = new Marker(mapView);
+                m.setPosition(new GeoPoint(seg.lat, seg.lng));
+                m.setTitle(String.format("Safety: %.1f/10 (%s)", seg.safety_score, seg.safety_label));
+                m.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+                // Use circle drawable tinted with safety colour
+                m.setIcon(getTintedCircle(seg.safety_color));
+                segmentMarkers.add(m);
+                mapView.getOverlays().add(m);
+            }
+        }
+
+        // ---- Destination marker ----
+        Marker destMarker = new Marker(mapView);
+        destMarker.setPosition(new GeoPoint(destLat, destLng));
+        destMarker.setTitle("Destination");
+        destMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        segmentMarkers.add(destMarker);
+        mapView.getOverlays().add(destMarker);
+
+        // ---- Pan map to show full route ----
+        if (!geoPoints.isEmpty()) {
+            GeoPoint mid = geoPoints.get(geoPoints.size() / 2);
+            mapView.getController().animateTo(mid);
+            mapView.getController().setZoom(14.0);
+        }
+
+        mapView.invalidate();
+
+        // ---- Update info panel ----
+        showResultPanel(route);
+    }
+
+    private void showResultPanel(SafeRouteModels.RouteResponse route) {
+        layoutResult.setVisibility(View.VISIBLE);
+
+        tvSafetyScore.setText(String.format("%.1f / 10", route.overall_safety_score));
+        tvSafetyLabel.setText(route.overall_safety_label);
+        tvDistance.setText(String.format("%.2f km", route.distance_km));
+        tvDuration.setText(String.format("%.0f min", route.duration_min));
+
+        // Colour the indicator bar
+        int color = getSafetyColor(route.overall_safety_score);
+        safetyIndicatorBar.setBackgroundColor(color);
+        tvSafetyLabel.setTextColor(color);
+
+        // Safety icon
+        if (route.overall_safety_score >= 6.5) {
+            ivSafetyIcon.setImageResource(R.drawable.ic_shield);
+            ivSafetyIcon.setColorFilter(Color.parseColor("#4CAF50"));
+        } else if (route.overall_safety_score >= 4.0) {
+            ivSafetyIcon.setImageResource(R.drawable.ic_shield);
+            ivSafetyIcon.setColorFilter(Color.parseColor("#FF9800"));
+        } else {
+            ivSafetyIcon.setImageResource(R.drawable.ic_sos);
+            ivSafetyIcon.setColorFilter(Color.parseColor("#F44336"));
+        }
+
+        // Tips
+        layoutTips.removeAllViews();
+        if (route.tips != null) {
+            for (String tip : route.tips) {
+                TextView tv = new TextView(this);
+                tv.setText(tip);
+                tv.setTextSize(13f);
+                tv.setPadding(0, 6, 0, 6);
+                tv.setTextColor(Color.parseColor("#CCCCCC"));
+                layoutTips.addView(tv);
+            }
+        }
+    }
+
+    private int getSafetyColor(double score) {
+        if (score >= 6.5) return Color.parseColor("#4CAF50");
+        if (score >= 4.0) return Color.parseColor("#FF9800");
+        return Color.parseColor("#F44336");
+    }
+
+    private android.graphics.drawable.Drawable getTintedCircle(String hexColor) {
+        // Simple circle drawable tinted to the segment safety colour
+        android.graphics.drawable.GradientDrawable circle =
+                new android.graphics.drawable.GradientDrawable();
+        circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        circle.setSize(24, 24);
+        try {
+            circle.setColor(Color.parseColor(hexColor));
+        } catch (Exception e) {
+            circle.setColor(Color.GRAY);
+        }
+        circle.setStroke(2, Color.WHITE);
+        return circle;
+    }
+
+    private void clearRouteOverlays() {
+        if (routePolyline != null) {
+            mapView.getOverlays().remove(routePolyline);
+            routePolyline = null;
+        }
+        for (Marker m : segmentMarkers) mapView.getOverlays().remove(m);
+        segmentMarkers.clear();
+    }
+
+    private void setLoading(boolean loading) {
+        progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+        btnFindRoute.setEnabled(!loading);
+        btnFindRoute.setText(loading ? "Analysing…" : "Find Safest Route");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mapView.onResume();
+        if (locationOverlay != null) locationOverlay.enableMyLocation();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mapView.onPause();
+        if (locationOverlay != null) locationOverlay.disableMyLocation();
+    }
+}

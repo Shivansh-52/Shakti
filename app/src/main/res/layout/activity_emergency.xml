@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <View
+        android:id="@+id/pulseBackground"
+        android:layout_width="280dp"
+        android:layout_height="280dp"
+        android:background="@drawable/sos_pulse_bg"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/tvEmergencyStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="EMERGENCY SOS"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:textColor="#FF4D4D"
+        android:letterSpacing="0.05"
+        android:layout_marginTop="64dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+        
+    <TextView
+        android:id="@+id/tvInstruction"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:text="Hold the button or shake your phone rapidly to trigger a silent alarm and broadcast your live location."
+        android:textSize="15sp"
+        android:textColor="@color/text_secondary"
+        android:textAlignment="center"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/tvEmergencyStatus"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/btnSosHold"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        app:cardCornerRadius="110dp"
+        app:cardBackgroundColor="#D32F2F"
+        app:cardElevation="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/btn_gradient_red"
+            android:gravity="center"
+            android:orientation="vertical">
+            
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@drawable/ic_sos"
+                android:tint="@color/text_primary"
+                android:layout_marginBottom="8dp" />
+                
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="HOLD"
+                android:textSize="24sp"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:letterSpacing="0.1" />
+        </LinearLayout>
+            
+    </com.google.android.material.card.MaterialCardView>
+    
+    <ProgressBar
+        android:id="@+id/progressSos"
+        android:layout_width="240dp"
+        android:layout_height="240dp"
+        android:indeterminate="false"
+        android:progress="0"
+        android:max="100"
+        android:progressDrawable="@drawable/circular_progress"
+        app:layout_constraintTop_toTopOf="@id/btnSosHold"
+        app:layout_constraintBottom_toBottomOf="@id/btnSosHold"
+        app:layout_constraintStart_toStartOf="@id/btnSosHold"
+        app:layout_constraintEnd_toEndOf="@id/btnSosHold" />
+
+    <TextView
+        android:id="@+id/tvCountdown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="48sp"
+        android:textStyle="bold"
+        android:textColor="#FF4D4D"
+        android:layout_marginTop="32dp"
+        app:layout_constraintTop_toBottomOf="@id/btnSosHold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+        
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCancelSos"
+        android:layout_width="200dp"
+        android:layout_height="60dp"
+        android:text="CANCEL SOS"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:cornerRadius="30dp"
+        app:backgroundTint="@color/divider"
+        android:layout_marginBottom="48dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/settingsLayout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/settingsLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchVoiceMsg"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Enable Voice Message"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp" />
+            
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchMsgPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Message Preview"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp" />
+            
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchBgProtect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Background Protection"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp" />
+            
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTestSosAlert"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="TEST SOS ALERT &amp; EMAIL VIDEO"
+            android:textColor="@color/surface"
+            android:textStyle="bold"
+            app:backgroundTint="@color/accent"
+            android:layout_marginTop="16dp" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
