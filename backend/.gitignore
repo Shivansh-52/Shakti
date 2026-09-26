@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environments
+venv/
+myvenv/
+env/
+.venv/
+ENV/
+
+# Environment Variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Byte-compiled
+*.egg-info/
+dist/
+build/
+
+# Uploads (user data - not for deployment)
+uploads/
+
+# Test cache
+.pytest_cache/

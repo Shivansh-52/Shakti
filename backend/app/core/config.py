@@ -12,15 +12,22 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "30"))
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
     
-    # Parse comma separated string into list if provided
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    
+    # Parse comma separated string into list; if empty allow all origins
     @property
     def cors_origins_list(self) -> List[str]:
         origins = os.getenv("CORS_ORIGINS", "")
         if not origins:
-            return []
+            # Allow all origins when not specified (for Android app access)
+            return ["*"]
         return [origin.strip() for origin in origins.split(",") if origin.strip()]
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()

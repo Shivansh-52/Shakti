@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,10 +7,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.mongodb import connect_to_mongo, close_mongo_connection, db_manager
 from app.api.auth import router as auth_router
+from app.api.safe_route import router as safe_route_router
+
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_to_mongo()
+    # Pre-load the ML model in a thread so the event loop isn't blocked
+    try:
+        loop = asyncio.get_event_loop()
+        from app.ml.model_loader import load_models
+        await loop.run_in_executor(None, load_models)
+        logger.info("Safe route ML model pre-loaded.")
+    except Exception as e:
+        logger.warning(f"Could not pre-load ML model: {e}")
     yield
     await close_mongo_connection()
 
@@ -17,16 +31,27 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-if settings.cors_origins_list:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins_list,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(safe_route_router, prefix="/api/safe-route", tags=["safe-route"])
+
+from app.api.buddy_ws import router as buddy_router
+app.include_router(buddy_router, tags=["buddy"])
+
+from app.api.emergency import router as emergency_router
+app.include_router(emergency_router, prefix="/api/emergency", tags=["emergency"])
+
+import os
+from fastapi.staticfiles import StaticFiles
+os.makedirs("uploads/sos_videos", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/health", tags=["health"])
 async def health_check():

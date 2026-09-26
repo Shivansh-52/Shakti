@@ -8,3 +8,10 @@ passlib[bcrypt]
 PyJWT
 pytest
 email-validator
+scikit-learn==1.6.1
+pandas
+numpy
+httpx
+joblib
+osmnx
+requests
