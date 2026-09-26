@@ -44,8 +44,16 @@ class SegmentSafety(BaseModel):
     safety_color: str            # Hex colour for map overlay
 
 
+class AlternativeRoute(BaseModel):
+    overall_safety_score: float
+    overall_safety_label: str
+    distance_km: float
+    duration_min: float
+    polyline: List[List[float]]
+    segments: List[SegmentSafety]
+
 class RouteResponse(BaseModel):
-    overall_safety_score: float  # 0–100 score
+    overall_safety_score: float
     overall_safety_label: str
     risk_classification: Optional[Dict[str, Any]] = None
     distance_km: float
@@ -53,6 +61,7 @@ class RouteResponse(BaseModel):
     polyline: List[List[float]]  # [[lat, lng], ...]
     segments: List[SegmentSafety]
     tips: List[str]
+    alternatives: List[AlternativeRoute] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -85,14 +94,24 @@ def _build_tips(overall: float, is_night: bool) -> List[str]:
     return tips
 
 
-async def _fetch_osrm_route(origin: LatLng, dest: LatLng) -> dict:
-    """Fetch walking route from OSRM."""
+async def _fetch_osrm_route(origin: LatLng, dest: LatLng, retries: int = 2) -> dict:
+    """Fetch walking route from OSRM with retry and error handling."""
     coords = f"{origin.lng},{origin.lat};{dest.lng},{dest.lat}"
-    url = f"{OSRM_BASE}/{coords}?overview=full&geometries=geojson&steps=false"
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        return resp.json()
+    url = f"{OSRM_BASE}/{coords}?overview=full&geometries=geojson&steps=false&alternatives=3"
+    for attempt in range(1, retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                data = resp.json()
+                if not data.get("routes"):
+                    raise ValueError("OSRM returned empty routes")
+                return data
+        except (httpx.HTTPError, ValueError) as e:
+            logger.warning(f"OSRM request failed (attempt {attempt}/{retries}): {e}")
+            if attempt == retries:
+                raise HTTPException(status_code=502, detail="Unable to fetch route from OSRM. Please try again later.")
+            await asyncio.sleep(0.5)
 
 
 def _score_segment(lat: float, lng: float, is_night: bool) -> SegmentSafety:
@@ -150,56 +169,68 @@ async def score_route(req: RouteRequest):
     if not routes:
         raise HTTPException(status_code=404, detail="No route found between the given points.")
 
-    route = routes[0]
-    distance_km = round(route["distance"] / 1000, 2)
-    duration_min = round(route["duration"] / 60, 1)
-
-    # Extract coordinate list [[lng, lat], ...] → convert to [[lat, lng]]
-    coords_raw: List[List[float]] = route["geometry"]["coordinates"]
-    polyline = [[c[1], c[0]] for c in coords_raw]
-
-    # Sample route points for model evaluation
-    SAMPLE_STEP = max(1, len(polyline) // 25)
-    sampled = polyline[::SAMPLE_STEP]
-    if polyline[-1] not in sampled:
-        sampled.append(polyline[-1])
-
-    # Score segments in executor thread
+    processed_routes = []
     loop = asyncio.get_event_loop()
-    segments: List[SegmentSafety] = await loop.run_in_executor(
-        None,
-        lambda: [_score_segment(lat, lng, req.is_night) for lat, lng in sampled]
-    )
+    
+    for route in routes:
+        dist_km = round(route["distance"] / 1000, 2)
+        dur_min = round(route["duration"] / 60, 1)
+        
+        coords_raw = route["geometry"]["coordinates"]
+        polyline = [[c[1], c[0]] for c in coords_raw]
+        
+        SAMPLE_STEP = max(1, len(polyline) // 25)
+        sampled = polyline[::SAMPLE_STEP]
+        if polyline[-1] not in sampled:
+            sampled.append(polyline[-1])
+            
+        segments = await loop.run_in_executor(
+            None,
+            lambda pts=sampled: [_score_segment(lat, lng, req.is_night) for lat, lng in pts]
+        )
+        
+        scores = [s.safety_score for s in segments]
+        overall = round(sum(scores) / len(scores), 1) if scores else 80.0
+        overall_label, _ = _safety_label(overall)
+        
+        processed_routes.append({
+            "distance_km": dist_km,
+            "duration_min": dur_min,
+            "polyline": polyline,
+            "segments": segments,
+            "overall_safety_score": overall,
+            "overall_safety_label": overall_label
+        })
 
-    scores = [s.safety_score for s in segments]
-    overall = round(sum(scores) / len(scores), 1) if scores else 80.0
-    overall_label, _ = _safety_label(overall)
-    tips = _build_tips(overall, req.is_night)
+    primary = processed_routes[0]
+    tips = _build_tips(primary["overall_safety_score"], req.is_night)
 
-    # Overall route-level classification
     route_features = {
         "origin_lat": req.origin.lat,
         "origin_lon": req.origin.lng,
         "destination_lat": req.destination.lat,
         "destination_lon": req.destination.lng,
-        "route_distance_km": distance_km,
-        "route_distance_m": distance_km * 1000.0,
+        "route_distance_km": primary["distance_km"],
+        "route_distance_m": primary["distance_km"] * 1000.0,
         "is_night": 1 if req.is_night else 0,
     }
     classification_result = await loop.run_in_executor(
         None,
         lambda: predict_safety_classification(route_features)
     )
+    
+    alternatives = [AlternativeRoute(**alt) for alt in processed_routes[1:]]
 
     return RouteResponse(
-        overall_safety_score=overall,
-        overall_safety_label=overall_label,
+        overall_safety_score=primary["overall_safety_score"],
+        overall_safety_label=primary["overall_safety_label"],
         risk_classification=classification_result,
-        distance_km=distance_km,
-        duration_min=duration_min,
-        polyline=polyline,
-        segments=segments,
+        distance_km=primary["distance_km"],
+        duration_min=primary["duration_min"],
+        polyline=primary["polyline"],
+        segments=primary["segments"],
         tips=tips,
+        alternatives=alternatives,
     )
 
 
