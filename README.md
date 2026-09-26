@@ -1,4 +1,4 @@
-# 🛡️ Shakti (Suraksha Setu) — Intelligent Women & Citizen Safety Platform
+# 🛡️ Suraksha Setu — Intelligent Women & Citizen Safety Platform
 
 [![Android](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com/)
 [![Java](https://img.shields.io/badge/Language-Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com/)
@@ -12,15 +12,15 @@
 
 ## 📖 About the Project
 
-**Shakti (Suraksha Setu)** is a next-generation, AI-powered mobile safety ecosystem engineered to provide proactive, multi-layered protection for women and citizens. 
+**Suraksha Setu** is a next-generation, AI-powered mobile safety ecosystem engineered to provide proactive, multi-layered protection for women and citizens. 
 
-Traditional safety apps often require the user to actively unlock their phone, find an app, and press a button—an action that is frequently impossible during sudden duress or panic situations. **Shakti** solves this critical flaw through an autonomous, hardware-integrated approach. 
+Traditional safety apps often require the user to actively unlock their phone, find an app, and press a button—an action that is frequently impossible during sudden duress or panic situations. **Suraksha Setu** solves this critical flaw through an autonomous, hardware-integrated approach. 
 
-By leveraging background sensory intelligence, the platform can detect emergencies seamlessly without relying on conscious user interaction. Whether through violent motion (Shake-to-SOS), distress audio cues (Continuous Voice Detection), or abrupt hardware disconnects, Shakti guarantees that an SOS is dispatched instantly. 
+By leveraging background sensory intelligence, the platform can detect emergencies seamlessly without relying on conscious user interaction. Whether through violent motion (Shake-to-SOS), distress audio cues (Continuous Voice Detection), or abrupt hardware disconnects, Suraksha Setu guarantees that an SOS is dispatched instantly. 
 
 Once triggered, the system acts as a digital guardian: silently capturing verifiable audio/video evidence, routing real-time GPS tracking data to pre-registered family members, matching users with nearby verified volunteer responders, and intelligently escalating the situation to national authorities (112 / Women's Help Desks). 
 
-Beyond reactive SOS, Shakti introduces **Proactive Safety Navigation**—a custom-built AI routing engine that scores street paths based on safety metadata (lighting, crime density, and safe zones) rather than just traffic speed, ensuring users are always directed through the safest possible corridors.
+Beyond reactive SOS, Suraksha Setu introduces **Proactive Safety Navigation**—a custom-built AI routing engine that scores street paths based on safety metadata (lighting, crime density, and safe zones) rather than just traffic speed, ensuring users are always directed through the safest possible corridors.
 
 ---
 
@@ -81,7 +81,7 @@ For quick evaluation without full environment setup, follow these steps to test 
 
 ### 2. 🎙️ Continuous Voice SOS Detection
 - **Multi-Keyword Speech Recognition:** Continuously monitors voice streams for distress triggers:
-  - `"Help"`, `"SOS"`, `"Save me"`, `"Bachao"`, `"Police"`, `"Emergency"`, `"Madad"`, `"Shakti"`, `"Attack"`.
+  - `"Help"`, `"SOS"`, `"Save me"`, `"Bachao"`, `"Police"`, `"Emergency"`, `"Madad"`, `"Suraksha Setu"`, `"Attack"`.
 - **Custom Keyword Configuration:** Users can register custom secret safe words from their Citizen Profile.
 - **In-Activity & Background Listening:** Active both as a persistent background daemon (`VoiceRecognitionService`) and during live in-app navigation.
 
@@ -133,7 +133,7 @@ For quick evaluation without full environment setup, follow these steps to test 
 
 ```
                                ┌────────────────────────────────┐
-                               │     Shakti Android App         │
+                               │     Suraksha Setu Android App         │
                                │  (Java Native + Material 3)    │
                                └───────────────┬────────────────┘
                                                │
@@ -180,8 +180,8 @@ For quick evaluation without full environment setup, follow these steps to test 
 ### Android Client Setup
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/Shivansh-52/Shakti.git
-   cd Shakti
+   git clone https://github.com/Shivansh-52/Suraksha Setu.git
+   cd Suraksha Setu
    ```
 2. **Open in Android Studio:** Open the root directory in Android Studio (Giraffe / Hedgehog / Iguana / Jellyfish).
 3. **Configure Google Maps API Key:**
@@ -240,7 +240,7 @@ MAIL_PASSWORD="your-gmail-app-password"
 MAIL_FROM="your-email@gmail.com"
 MAIL_PORT=465
 MAIL_SERVER="smtp.gmail.com"
-MAIL_FROM_NAME="Shakti Emergency Response"
+MAIL_FROM_NAME="Suraksha Setu Emergency Response"
 ```
 
 ---
@@ -273,5 +273,5 @@ Distributed under the **MIT License**. See `LICENSE` for more information.
 ---
 
 <div align="center">
-  <sub>Built with ❤️ for Citizen & Women Safety • Project <b>Shakti</b></sub>
+  <sub>Built with ❤️ for Citizen & Women Safety • Project <b>Suraksha Setu</b></sub>
 </div>
