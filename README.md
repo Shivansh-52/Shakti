@@ -10,6 +10,44 @@
 
 ---
 
+## 📖 About the Project
+
+**Shakti (Suraksha Setu)** is a next-generation, AI-powered mobile safety ecosystem engineered to provide proactive, multi-layered protection for women and citizens. 
+
+Traditional safety apps often require the user to actively unlock their phone, find an app, and press a button—an action that is frequently impossible during sudden duress or panic situations. **Shakti** solves this critical flaw through an autonomous, hardware-integrated approach. 
+
+By leveraging background sensory intelligence, the platform can detect emergencies seamlessly without relying on conscious user interaction. Whether through violent motion (Shake-to-SOS), distress audio cues (Continuous Voice Detection), or abrupt hardware disconnects, Shakti guarantees that an SOS is dispatched instantly. 
+
+Once triggered, the system acts as a digital guardian: silently capturing verifiable audio/video evidence, routing real-time GPS tracking data to pre-registered family members, matching users with nearby verified volunteer responders, and intelligently escalating the situation to national authorities (112 / Women's Help Desks). 
+
+Beyond reactive SOS, Shakti introduces **Proactive Safety Navigation**—a custom-built AI routing engine that scores street paths based on safety metadata (lighting, crime density, and safe zones) rather than just traffic speed, ensuring users are always directed through the safest possible corridors.
+
+---
+
+## 🚀 Evaluator's Quick-Start & Testing Guide
+
+For quick evaluation without full environment setup, follow these steps to test the core features:
+
+1. **Install the APK:** Install the pre-built APK (if provided in releases) or build directly via Android Studio onto a physical Android device (emulators lack hardware sensors for shake detection).
+2. **Grant Permissions:** On first launch, accept all required permissions (Location, Camera, Microphone, SMS). The app requires these to demonstrate its automated safety capabilities.
+3. **Test Shake-to-SOS:** 
+   - Lock your phone or go to the home screen (simulating the app in the background).
+   - Vigorously shake the phone 3-4 times.
+   - *Expected Result:* The phone will vibrate heavily, sound a siren, and open the Emergency SOS screen, proving background hardware triggering.
+4. **Test Voice Recognition (SOS):**
+   - On the main dashboard, say "Help", "SOS", or "Bachao" loudly.
+   - *Expected Result:* The speech recognizer will detect the keyword and trigger the SOS alarm and SMS dispatcher.
+5. **Test AI Safe Routes:**
+   - Tap on "Safe Walk / Navigation".
+   - Select a pre-configured Dehradun destination (e.g., *Clock Tower* or *Pacific Mall*).
+   - *Expected Result:* The map will render routes, and the HUD will display the AI Safety Score (out of 100) based on the backend ML model.
+6. **Test Guardian Alert (SMS):**
+   - Add a dummy phone number in the "Emergency Contacts" section.
+   - Trigger an SOS.
+   - *Expected Result:* Check the SMS app on the testing device; an auto-generated SMS with a live Google Maps location link will be queued or sent.
+
+---
+
 ## 📌 Table of Contents
 - [✨ Key Features](#-key-features)
   - [1. 📳 Shake-to-SOS & Hardware Triggering](#1--shake-to-sos--hardware-triggering)
