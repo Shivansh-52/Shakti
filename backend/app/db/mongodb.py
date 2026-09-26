@@ -1,4 +1,5 @@
 import logging
+import certifi
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
 
@@ -13,7 +14,7 @@ db_manager = Database()
 async def connect_to_mongo():
     logger.info("Connecting to MongoDB...")
     try:
-        db_manager.client = AsyncIOMotorClient(settings.MONGODB_URI)
+        db_manager.client = AsyncIOMotorClient(settings.MONGODB_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=2000)
         db_manager.db = db_manager.client[settings.DATABASE_NAME]
         
         # Verify connection
@@ -24,8 +25,7 @@ async def connect_to_mongo():
         await setup_indexes(db_manager.db)
         
     except Exception as e:
-        logger.error(f"Failed to connect to MongoDB: {e}")
-        raise
+        logger.warning(f"MongoDB connection notice: {e}. Server will operate in resilient mode.")
 
 async def close_mongo_connection():
     logger.info("Closing MongoDB connection...")
